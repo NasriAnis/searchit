@@ -1,0 +1,5 @@
+build/
+deps/
+test/
+old/
+compile_commands.json
