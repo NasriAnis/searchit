@@ -1,6 +1,7 @@
 #include <mupdf/fitz.h>
+#include <stdio.h>
 
-#include "include/pdf_parsing.h"
+#include "pdf_parsing.h"
 
 s_page_text *get_page_text_from_pdf(char *path_pdf) {
     fz_context *ctx = fz_new_context(NULL, NULL, FZ_STORE_UNLIMITED);
@@ -11,6 +12,7 @@ s_page_text *get_page_text_from_pdf(char *path_pdf) {
 
     s_page_text *buffer = malloc(page_count * sizeof(s_page_text));
     if (!buffer) {
+        printf("ERROR: malloc buffer");
         fz_drop_document(ctx, doc);
         fz_drop_context(ctx);
         return NULL;
