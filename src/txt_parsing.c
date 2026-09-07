@@ -3,16 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct {
-    char *term;
-    size_t number;
-} term_count;
-
-typedef struct {
-    term_count *items;
-    size_t count;
-    size_t capacity;
-} term_table;
+#include "txt_parsing.h"
 
 term_table count_words(char *text) {
     term_table table = { NULL, 0, 0 };
