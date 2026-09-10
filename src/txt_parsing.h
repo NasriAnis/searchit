@@ -9,8 +9,9 @@ typedef struct {
 } term_count;
 
 typedef struct {
-    term_count *items;
-    size_t count;
+    term_count *items;  // Word + its count
+    size_t word_count;
+    size_t count;       // Numbers of different items
     size_t capacity;
 } term_table;
 
@@ -20,7 +21,7 @@ typedef struct {
  * a term_table struct per text where is
  * each word and its count inside a term_count
  * Struct.
- */
+*/
 
 term_table count_words(char *text);
 void free_term_table(term_table *t);

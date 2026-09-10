@@ -6,11 +6,18 @@
 #include "txt_parsing.h"
 
 term_table count_words(char *text) {
-    term_table table = { NULL, 0, 0 };
+    term_table table = { 
+        NULL,
+        0,
+        0,
+        0
+    };
     char delim[] = " \t\r\n\v\f,./:;()[]{}`'\"!@#$%&*?<>";
     char *token = strtok(text, delim);
 
     while (token) {
+        table.word_count++;
+
         size_t i;
         for (i = 0; i < table.count; i++) {
             if (strcmp(table.items[i].term, token) == 0) {
