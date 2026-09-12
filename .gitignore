@@ -3,3 +3,8 @@ deps/
 test/
 old/
 compile_commands.json
+
+
+# Added by cargo
+
+/target
