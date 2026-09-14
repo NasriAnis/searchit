@@ -1,4 +1,5 @@
 use std::{path::{Path, PathBuf}};
+use pdf_extract::extract_text_by_pages;
 
 struct FileInfo{
     path: PathBuf,
@@ -21,8 +22,26 @@ pub fn run(args: Vec<String>) {
     };
 
     for file in files {
-        println!("File : {:?} of type {:?}", file.path, file.extension);
+        match file.extension.as_str() {
+            "pdf" => {
+                handle_pdf(file);
+            },
+            _ => {
+                println!("(x) Skipping File : {:?} of type {:?}: not scannable type", file.path, file.extension);
+            },
+        }
     }
+}
+
+fn handle_pdf(file: FileInfo) {
+    let text = match extract_text_by_pages(file.path.as_path()){
+        Ok(t) => Some(t),
+        Err(e) => {
+            eprint!("ERROR in extracting text from pdf {:?}: {e}", file.path.as_path());
+            None
+        }
+    };
+    println!("(/) File : {:?} of type {:?} with text : {:?}", file.path, file.extension, text);
 }
 
 fn recursive_read_directory(path: &Path) -> Result<Vec<FileInfo>, std::io::Error> {
