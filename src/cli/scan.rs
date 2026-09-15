@@ -1,10 +1,14 @@
-use std::{path::{Path, PathBuf}};
+use std::{collections::HashMap, path::{Path, PathBuf}, vec};
 use pdf_extract::extract_text_by_pages;
+use crate::token;
 
-struct FileInfo{
+#[derive(Debug)]
+struct File {
     path: PathBuf,
     extension: String,
+    words: Vec<HashMap<String, usize>>,
 }
+
 
 pub fn run(args: Vec<String>) {
     if args.len() < 3 {
@@ -12,7 +16,8 @@ pub fn run(args: Vec<String>) {
     }
     let path = Path::new(&args[2]);
 
-    let files = match recursive_read_directory(path){
+    println!("INFO: reading directory");
+    let files_path = match recursive_read_directory(path){
         Ok(t) => t,
         Err(e) => {
             eprint!("ERROR at recursive_read_directory() : {}", e);
@@ -21,32 +26,59 @@ pub fn run(args: Vec<String>) {
         }
     };
 
-    for file in files {
-        match file.extension.as_str() {
+    let mut file_objects: Vec<File> = vec![];
+
+    for path in files_path {
+        println!("INFO: scanning file {:?} {}", path.as_path(), "#".repeat(5));
+        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("unknown").to_string();
+        let mut tokens_hashmap_vector: Vec<HashMap<String, usize>> = Vec::new();
+
+        match extension.as_str() {
             "pdf" => {
-                handle_pdf(file);
+                match handle_pdf(path.as_path()) {
+                    Some(words_vector) => {
+                        for w in words_vector {
+                            tokens_hashmap_vector.push(get_tokens(w));
+                        }
+                    },
+                    None => { continue; },
+                };
+
             },
             _ => {
-                println!("(x) Skipping File : {:?} of type {:?}: not scannable type", file.path, file.extension);
+                println!("(x) Skipping not scannable type {}", extension);
             },
+        }
+        file_objects.push(
+            File {
+                path,
+                extension,
+                words: tokens_hashmap_vector,
+            }
+        );
+    }
+
+    println!("{:?}", file_objects)
+}
+
+fn get_tokens(text: String) -> HashMap<String, usize> {
+    token::count_individual_token(
+        token::tokenize(text)
+    )
+}
+
+fn handle_pdf(path: &Path) -> Option<Vec<String>> {
+    match extract_text_by_pages(path){
+        Ok(t) => Some(t),
+        Err(e) => {
+            eprint!("ERROR in extracting text from pdf {:?}: {e}", path);
+            None
         }
     }
 }
 
-fn handle_pdf(file: FileInfo) {
-    let text = match extract_text_by_pages(file.path.as_path()){
-        Ok(t) => Some(t),
-        Err(e) => {
-            eprint!("ERROR in extracting text from pdf {:?}: {e}", file.path.as_path());
-            None
-        }
-    };
-    println!("(/) File : {:?} of type {:?} with text : {:?}", file.path, file.extension, text);
-}
-
-fn recursive_read_directory(path: &Path) -> Result<Vec<FileInfo>, std::io::Error> {
+fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
     let dire_files = path.read_dir()?;
-    let mut files: Vec<FileInfo> = vec![];
     let mut files_path: Vec<PathBuf> = vec![];
 
     for file in dire_files{
@@ -58,7 +90,7 @@ fn recursive_read_directory(path: &Path) -> Result<Vec<FileInfo>, std::io::Error
                             continue;
                         } else if ft.is_dir() {
                             let mut rf = recursive_read_directory(f.path().as_path())?;
-                            files.append(&mut rf);
+                            files_path.append(&mut rf);
                         } else {
                             files_path.push(f.path());
                         }
@@ -76,20 +108,7 @@ fn recursive_read_directory(path: &Path) -> Result<Vec<FileInfo>, std::io::Error
         }
     }
 
-
-    for path in files_path {
-        let extension = path.extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("unknown").to_string();
-        files.push(
-            FileInfo{
-                path,
-                extension,
-            }
-        )
-    }
-
-    Ok(files)
+    Ok(files_path)
 }
 
 fn help(){
