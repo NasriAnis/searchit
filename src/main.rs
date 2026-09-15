@@ -1,6 +1,7 @@
 use std::env;
 
 pub mod cli;
+pub mod token;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
