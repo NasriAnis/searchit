@@ -86,32 +86,31 @@ fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error>
     let mut files_path: Vec<PathBuf> = vec![];
 
     for file in dire_files{
-        match file {
-            Ok(f) => {
-                match f.file_type() {
-                    Ok(ft) => {
-                        if ft.is_symlink() {
-                            continue;
-                        } else if ft.is_dir() {
-                            let mut rf = recursive_read_directory(f.path().as_path())?;
-                            files_path.append(&mut rf);
-                        } else {
-                            files_path.push(f.path());
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("ERROR could not determine file type for {:?}: {}", f.path(), e);
-                        println!("SKIPING IT!");
-                    }
-                }
-            },
+        let f = match file {
+            Ok(f) => { f },
             Err(e) => {
                 eprintln!("ERROR could not read file : {}", e);
-                println!("SKIPING IT!")
+                println!("SKIPING IT!");
+                continue;
             },
+        };
+        match f.file_type() {
+            Ok(ft) => {
+                if ft.is_symlink() {
+                    continue;
+                } else if ft.is_dir() {
+                    let mut rf = recursive_read_directory(f.path().as_path())?;
+                    files_path.append(&mut rf);
+                } else {
+                    files_path.push(f.path());
+                }
+            }
+            Err(e) => {
+                eprintln!("ERROR could not determine file type for {:?}: {}", f.path(), e);
+                println!("SKIPING IT!");
+            }
         }
     }
-
     Ok(files_path)
 }
 
