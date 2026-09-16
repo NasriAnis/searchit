@@ -2,6 +2,7 @@ use std::env;
 
 pub mod cli;
 pub mod token;
+pub mod tf_idf;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
