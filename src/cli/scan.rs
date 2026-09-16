@@ -72,7 +72,7 @@ fn handle_pdf(path: &Path) -> Vec<Doc> {
         let tokens_hashmap = get_tokens(w);
         file_objects.push(
             Doc {
-                loc: Loc { path: path.to_path_buf(), page: 1 },
+                loc: Loc { path: path.to_path_buf(), page: page },
                 extension: "pdf".to_string(),
                 words: tokens_hashmap,
             }
