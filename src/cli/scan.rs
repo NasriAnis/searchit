@@ -3,10 +3,16 @@ use pdf_extract::extract_text_by_pages;
 use crate::token;
 
 #[derive(Debug)]
-struct File {
-    path: PathBuf,
+struct Doc {
+    loc: Loc,
     extension: String,
-    words: Vec<HashMap<String, usize>>,
+    words: HashMap<String, usize>,
+}
+
+#[derive(Debug)]
+struct Loc {
+    path: PathBuf,
+    page: u32,
 }
 
 
@@ -26,36 +32,18 @@ pub fn run(args: Vec<String>) {
         }
     };
 
-    let mut file_objects: Vec<File> = vec![];
+    let mut file_objects: Vec<Doc> = vec![];
 
     for path in files_path {
         println!("INFO: scanning file {:?} {}", path.as_path(), "#".repeat(5));
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("unknown").to_string();
-        let mut tokens_hashmap_vector: Vec<HashMap<String, usize>> = Vec::new();
 
         match extension.as_str() {
-            "pdf" => {
-                match handle_pdf(path.as_path()) {
-                    Some(words_vector) => {
-                        for w in words_vector {
-                            tokens_hashmap_vector.push(get_tokens(w));
-                        }
-                    },
-                    None => { continue; },
-                };
-
-            },
+            "pdf" => { file_objects.append(handle_pdf(path.as_path()).as_mut()); },
             _ => {
                 println!("(x) Skipping not scannable type {}", extension);
             },
         }
-        file_objects.push(
-            File {
-                path,
-                extension,
-                words: tokens_hashmap_vector,
-            }
-        );
     }
 
     println!("{:?}", file_objects)
@@ -67,14 +55,30 @@ fn get_tokens(text: String) -> HashMap<String, usize> {
     )
 }
 
-fn handle_pdf(path: &Path) -> Option<Vec<String>> {
-    match extract_text_by_pages(path){
-        Ok(t) => Some(t),
+fn handle_pdf(path: &Path) -> Vec<Doc> {
+    let mut file_objects: Vec<Doc> = vec![];
+
+    let words_vector = match extract_text_by_pages(path){
+        Ok(t) => t,
         Err(e) => {
             eprint!("ERROR in extracting text from pdf {:?}: {e}", path);
-            None
+            return vec![];
         }
+    };
+
+    let mut page: u32 = 0;
+    for w in words_vector {
+        page = page + 1;
+        let tokens_hashmap = get_tokens(w);
+        file_objects.push(
+            Doc {
+                loc: Loc { path: path.to_path_buf(), page: 1 },
+                extension: "pdf".to_string(),
+                words: tokens_hashmap,
+            }
+        );
     }
+    return file_objects;
 }
 
 fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
