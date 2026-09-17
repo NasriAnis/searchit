@@ -1,8 +1,6 @@
 use std::{collections::HashMap, io, path::{Path, PathBuf}, vec};
 use pdf_extract::extract_text_by_pages;
-use crate::{tf_idf::compute as compute, token};
-use std::fs::File;
-use std::io::{Write, BufWriter};
+use crate::{serialization::serialize_tfidf_to_word, tf_idf::compute as compute, token};
 use crate::config::TFIDF_TO_WORD_PATH;
 
 #[derive(Debug)]
@@ -49,6 +47,7 @@ pub fn run(args: Vec<String>) {
         }
     }
 
+    // compute tfidf for each document and save the result in TFIDF_TO_WORD_PATH
     match compute_tf_idf_wrapper(file_objects) {
         Ok(()) => { println!("INFO: succesfully saved term to tf mappings") },
         Err(e) => { println!("ERROR: error in tfidf computing {e}") }
@@ -125,7 +124,7 @@ fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
         std::fs::create_dir_all(TFIDF_TO_WORD_PATH)?;
         let words_hashmap = doc.words;
         let w_count_in_d: usize = words_hashmap.values().sum(); // number of words in document
-        let mut tf_to_word: Vec<(String, f64)> = Vec::new();
+        let mut tf_to_word: HashMap<String, f64> =HashMap::new();
 
         for w in words_hashmap{
             let n_t_in_d = w.1; // count of term in document
@@ -135,15 +134,12 @@ fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
                 None => { panic!() }
             };
             let tf_idf = compute(n_t_in_d as f64, w_count_in_d as f64, d_count as f64, d_with_t_value.to_owned() as f64);
-            tf_to_word.push((term, tf_idf))
+            tf_to_word.insert(term, tf_idf);
         }
         let file_stem = doc.loc.path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
-        let file_name = format!("{}{}:{}.txt",TFIDF_TO_WORD_PATH, file_stem, doc.loc.page);
-        let file = File::create(file_name)?;
-        let mut writer = BufWriter::new(file);
+        let file_name = format!("{}{}:{}.json",TFIDF_TO_WORD_PATH, file_stem, doc.loc.page);
 
-        let _ = writeln!(writer, "{}", doc.loc.path.as_path().display());
-        for item in &tf_to_word { writeln!(writer, "{} : {}", item.0, item.1)?; }
+        serialize_tfidf_to_word(doc.loc.path.as_path().display().to_string(), doc.loc.page, doc.extension, tf_to_word, file_name)?; // fix
     }
     Ok(())
 }

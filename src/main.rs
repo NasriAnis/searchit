@@ -4,6 +4,7 @@ pub mod cli;
 pub mod token;
 pub mod tf_idf;
 pub mod config;
+pub mod serialization;
 
 
 fn main() {
