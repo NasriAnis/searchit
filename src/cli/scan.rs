@@ -1,6 +1,9 @@
-use std::{collections::HashMap, path::{Path, PathBuf}, vec};
+use std::{collections::HashMap, io, path::{Path, PathBuf}, vec};
 use pdf_extract::extract_text_by_pages;
-use crate::token;
+use crate::{tf_idf::compute as compute, token};
+use std::fs::File;
+use std::io::{Write, BufWriter};
+use crate::config::TFIDF_TO_WORD_PATH;
 
 #[derive(Debug)]
 struct Doc {
@@ -35,7 +38,7 @@ pub fn run(args: Vec<String>) {
     let mut file_objects: Vec<Doc> = vec![];
 
     for path in files_path {
-        println!("INFO: scanning file {:?} {}", path.as_path(), "#".repeat(5));
+        println!("INFO: scanning file {:?}", path.as_path());
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("unknown").to_string();
 
         match extension.as_str() {
