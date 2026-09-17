@@ -49,12 +49,6 @@ pub fn run(args: Vec<String>) {
     println!("{:?}", file_objects)
 }
 
-fn get_tokens(text: String) -> HashMap<String, usize> {
-    token::count_individual_token(
-        token::tokenize(text)
-    )
-}
-
 fn handle_pdf(path: &Path) -> Vec<Doc> {
     let mut file_objects: Vec<Doc> = vec![];
 
@@ -66,19 +60,17 @@ fn handle_pdf(path: &Path) -> Vec<Doc> {
         }
     };
 
-    let mut page: u32 = 0;
-    for w in words_vector {
-        page = page + 1;
+    for (page, w) in (0_u32..).zip(words_vector) {
         let tokens_hashmap = get_tokens(w);
         file_objects.push(
             Doc {
-                loc: Loc { path: path.to_path_buf(), page: page },
+                loc: Loc { path: path.to_path_buf(), page },
                 extension: "pdf".to_string(),
                 words: tokens_hashmap,
             }
         );
     }
-    return file_objects;
+    file_objects
 }
 
 fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
@@ -112,6 +104,12 @@ fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error>
         }
     }
     Ok(files_path)
+}
+
+fn get_tokens(text: String) -> HashMap<String, usize> {
+    token::count_individual_token(
+        token::tokenize(text)
+    )
 }
 
 fn help(){
