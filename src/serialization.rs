@@ -23,10 +23,10 @@ pub fn serialize_tfidf_to_word(
     let file = File::create(file_name)?;
     let mut writer = BufWriter::new(file);
     let data = DocTfIdf {
-        path: path,
-        page: page,
-        extension: extension,
-        terms: terms,
+        path,
+        page,
+        extension,
+        terms,
     };
     // impl: check if files already exit and handle that
     let serialized = serde_json::to_string(&data).unwrap(); // fix
