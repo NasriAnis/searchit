@@ -14,9 +14,10 @@ pub fn count_individual_token(tokens: Vec<String>) -> HashMap<String, usize> {
     for tok in tokens {
         if !hashmap_terms.contains_key(tok.as_str()) {
             hashmap_terms.insert(tok, 1);
-        }
-        else {
-            if let Some(i) = hashmap_terms.get(tok.as_str()) { hashmap_terms.insert(tok, i+1); }
+        } else {
+            if let Some(i) = hashmap_terms.get(tok.as_str()) {
+                hashmap_terms.insert(tok, i + 1);
+            }
         }
     }
     hashmap_terms

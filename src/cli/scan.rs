@@ -1,7 +1,12 @@
-use std::{collections::HashMap, fmt::format, io, path::{Path, PathBuf}, vec};
-use pdf_extract::extract_text_by_pages;
-use crate::{serialization::serialize_tfidf_to_word, tf_idf::compute as compute, token};
 use crate::config::TFIDF_TO_WORD_PATH;
+use crate::{serialization::serialize_tfidf_to_word, tf_idf::compute, token};
+use pdf_extract::extract_text_by_pages;
+use std::{
+    collections::HashMap,
+    io,
+    path::{Path, PathBuf},
+    vec,
+};
 
 #[derive(Debug)]
 struct Doc {
@@ -16,7 +21,6 @@ struct Loc {
     page: u32,
 }
 
-
 pub fn run(args: Vec<String>) {
     if args.len() < 3 {
         help();
@@ -24,12 +28,12 @@ pub fn run(args: Vec<String>) {
     let path = Path::new(&args[2]);
 
     println!("INFO: reading directory");
-    let files_path = match recursive_read_directory(path){
+    let files_path = match recursive_read_directory(path) {
         Ok(t) => t,
         Err(e) => {
             eprint!("ERROR at recursive_read_directory() : {}", e);
             println!("EXITTING NOW!");
-            return
+            return;
         }
     };
 
@@ -37,27 +41,37 @@ pub fn run(args: Vec<String>) {
 
     for path in files_path {
         println!("INFO: scanning file {:?}", path.as_path());
-        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("unknown").to_string();
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("unknown")
+            .to_string();
 
         match extension.as_str() {
-            "pdf" => { file_objects.append(extract_pdf_data(path.as_path()).as_mut()); },
+            "pdf" => {
+                file_objects.append(extract_pdf_data(path.as_path()).as_mut());
+            }
             _ => {
                 println!("(x) Skipping not scannable type {}", extension);
-            },
+            }
         }
     }
 
     // compute tfidf for each document and save the result in TFIDF_TO_WORD_PATH
     match compute_tf_idf_wrapper(file_objects) {
-        Ok(()) => { println!("INFO: succesfully saved term to tf mappings") },
-        Err(e) => { println!("ERROR: error in tfidf computing {e}") }
+        Ok(()) => {
+            println!("INFO: succesfully saved term to tf mappings")
+        }
+        Err(e) => {
+            println!("ERROR: error in tfidf computing {e}")
+        }
     };
 }
 
 fn extract_pdf_data(path: &Path) -> Vec<Doc> {
     let mut file_objects: Vec<Doc> = vec![];
 
-    let words_vector = match extract_text_by_pages(path){
+    let words_vector = match extract_text_by_pages(path) {
         Ok(t) => t,
         Err(e) => {
             eprint!("ERROR in extracting text from pdf {:?}: {e}", path);
@@ -67,13 +81,14 @@ fn extract_pdf_data(path: &Path) -> Vec<Doc> {
 
     for (page, w) in (0_u32..).zip(words_vector) {
         let tokens_hashmap = get_tokens(w);
-        file_objects.push(
-            Doc {
-                loc: Loc { path: path.to_path_buf(), page },
-                extension: "pdf".to_string(),
-                words: tokens_hashmap,
-            }
-        );
+        file_objects.push(Doc {
+            loc: Loc {
+                path: path.to_path_buf(),
+                page,
+            },
+            extension: "pdf".to_string(),
+            words: tokens_hashmap,
+        });
     }
     file_objects
 }
@@ -82,14 +97,14 @@ fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error>
     let dire_files = path.read_dir()?;
     let mut files_path: Vec<PathBuf> = vec![];
 
-    for file in dire_files{
+    for file in dire_files {
         let f = match file {
-            Ok(f) => { f },
+            Ok(f) => f,
             Err(e) => {
                 eprintln!("ERROR could not read file : {}", e);
                 println!("SKIPING IT!");
                 continue;
-            },
+            }
         };
         match f.file_type() {
             Ok(ft) => {
@@ -103,7 +118,11 @@ fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error>
                 }
             }
             Err(e) => {
-                eprintln!("ERROR could not determine file type for {:?}: {}", f.path(), e);
+                eprintln!(
+                    "ERROR could not determine file type for {:?}: {}",
+                    f.path(),
+                    e
+                );
                 println!("SKIPING IT!");
             }
         }
@@ -124,35 +143,53 @@ fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
         std::fs::create_dir_all(TFIDF_TO_WORD_PATH)?;
         let words_hashmap = doc.words;
         let w_count_in_d: usize = words_hashmap.values().sum(); // number of words in document
-        let mut tf_to_word: HashMap<String, f64> =HashMap::new();
+        let mut tf_to_word: HashMap<String, f64> = HashMap::new();
 
-        for w in words_hashmap{
+        for w in words_hashmap {
             let n_t_in_d = w.1; // count of term in document
             let term = w.0; // the term
-            let d_with_t_value = match d_with_t.get(&term){
+            let d_with_t_value = match d_with_t.get(&term) {
                 Some(t) => t,
-                None => { panic!() }
+                None => {
+                    panic!()
+                }
             };
-            let tf_idf = compute(n_t_in_d as f64, w_count_in_d as f64, d_count as f64, d_with_t_value.to_owned() as f64);
+            let tf_idf = compute(
+                n_t_in_d as f64,
+                w_count_in_d as f64,
+                d_count as f64,
+                d_with_t_value.to_owned() as f64,
+            );
             tf_to_word.insert(term, tf_idf);
         }
-        let file_stem = doc.loc.path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
-        let file_name = format!("{}{}:{}.json",TFIDF_TO_WORD_PATH, file_stem, doc.loc.page);
+        let file_stem = doc
+            .loc
+            .path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown");
+        let file_name = format!("{}{}:{}.json", TFIDF_TO_WORD_PATH, file_stem, doc.loc.page);
 
-        serialize_tfidf_to_word(doc.loc.path.as_path().display().to_string(), doc.loc.page, doc.extension, tf_to_word, file_name)?; // fix
+        serialize_tfidf_to_word(
+            doc.loc.path.as_path().display().to_string(),
+            doc.loc.page,
+            doc.extension,
+            tf_to_word,
+            file_name,
+        )?; // fix
     }
     Ok(())
 }
 
 fn get_tokens(text: String) -> HashMap<String, usize> {
-    token::count_individual_token(
-        token::tokenize(text)
-    )
+    token::count_individual_token(token::tokenize(text))
 }
 
 fn help() {
-    println!("\
+    println!(
+        "\
 help for scan:
     - scan <path>          Scan a directory and compute TF-IDF for all PDFs found
-    - scan <path> --help    Show this message");
+    - scan <path> --help    Show this message"
+    );
 }
