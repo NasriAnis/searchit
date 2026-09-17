@@ -39,7 +39,7 @@ pub fn run(args: Vec<String>) {
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("unknown").to_string();
 
         match extension.as_str() {
-            "pdf" => { file_objects.append(handle_pdf(path.as_path()).as_mut()); },
+            "pdf" => { file_objects.append(extract_pdf_data(path.as_path()).as_mut()); },
             _ => {
                 println!("(x) Skipping not scannable type {}", extension);
             },
@@ -52,7 +52,7 @@ pub fn run(args: Vec<String>) {
     };
 }
 
-fn handle_pdf(path: &Path) -> Vec<Doc> {
+fn extract_pdf_data(path: &Path) -> Vec<Doc> {
     let mut file_objects: Vec<Doc> = vec![];
 
     let words_vector = match extract_text_by_pages(path){
