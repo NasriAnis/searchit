@@ -25,7 +25,8 @@ fn main() {
 }
 
 fn help(){
-    println!("Help section :
+    println!("\
+help section :
     - help <command> : get help for a specific command
     - scan <path> : scan a directory to prepare for searching
     ")

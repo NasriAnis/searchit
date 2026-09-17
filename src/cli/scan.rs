@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io, path::{Path, PathBuf}, vec};
+use std::{collections::HashMap, fmt::format, io, path::{Path, PathBuf}, vec};
 use pdf_extract::extract_text_by_pages;
 use crate::{serialization::serialize_tfidf_to_word, tf_idf::compute as compute, token};
 use crate::config::TFIDF_TO_WORD_PATH;
@@ -150,8 +150,9 @@ fn get_tokens(text: String) -> HashMap<String, usize> {
     )
 }
 
-fn help(){
-    println!("help for scan:
-    - scan <path>
-    ")
+fn help() {
+    println!("\
+help for scan:
+    - scan <path>          Scan a directory and compute TF-IDF for all PDFs found
+    - scan <path> --help    Show this message");
 }
