@@ -14,6 +14,7 @@ fn main() {
         match args[1].as_str() {
             "help" => help(),
             "scan" => cli::scan::run(args),
+            "search" => cli::search::run(args),
             _ => {
                 eprintln!("ERROR: this command doesnt exit {}", args[1]);
                 eprintln!("EXITING!")
