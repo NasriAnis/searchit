@@ -11,10 +11,10 @@ use std::{
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DocTfIdf {
-    path: String,
-    page: u32,
-    extension: String,
-    terms: HashMap<String, f64>,
+    pub path: String,
+    pub page: u32,
+    pub extension: String,
+    pub terms: HashMap<String, f64>,
 }
 
 pub fn serialize_tfidf_to_word(
@@ -49,8 +49,8 @@ pub fn deserialize_tfidf_to_word() -> Vec<DocTfIdf> {
                     Ok(mut file) => {
                         let mut buffer = String::new();
                         match file.read_to_string(&mut buffer) {
-                            Ok(sz) => {
-                                vec_deserialized.push(serde_json::from_str(&sz.to_string()).unwrap());
+                            Ok(_sz) => {
+                                vec_deserialized.push(serde_json::from_str(&buffer).unwrap());
                             }
                             Err(_) => { continue; } // fix
                         }
