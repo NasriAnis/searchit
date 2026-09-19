@@ -1,4 +1,4 @@
-use crate::config::TFIDF_TO_WORD_PATH;
+use crate::config::{MAX_WORKERS, TFIDF_TO_WORD_PATH};
 use crate::{serialization::serialize_tfidf_to_word, tf_idf::compute, token};
 use pdf_extract::extract_text_by_pages;
 use std::{
@@ -6,7 +6,13 @@ use std::{
     io,
     path::{Path, PathBuf},
     vec,
+    thread,
+    sync::{Arc, Mutex, mpsc},
 };
+
+enum ScanJob {
+    Pdf(PathBuf),
+}
 
 #[derive(Debug)]
 struct Doc {
@@ -37,10 +43,38 @@ pub fn run(args: Vec<String>) {
         }
     };
 
-    let mut file_objects: Vec<Doc> = vec![];
+    let file_objects_mutex: Arc<Mutex<Vec<Doc>>> = Arc::new(Mutex::new(vec![]));
 
+    // job queue: main thread sends paths, workers consume
+    let (tx, rx) = mpsc::channel::<ScanJob>();
+    let rx = Arc::new(Mutex::new(rx));
+
+    let mut handles = vec![];
+
+    for _ in 0..MAX_WORKERS {
+        let rx = Arc::clone(&rx);
+        let file_objects_mutex = Arc::clone(&file_objects_mutex);
+
+        let handle = thread::spawn(move || {
+            loop {
+                // lock just long enough to grab one job, then release
+                let job = { rx.lock().unwrap().recv() };
+                match job {
+                    Ok(ScanJob::Pdf(path)) => {
+                                    println!("INFO: scanning PDF {:?}", path);
+                                    let mut data = extract_pdf_data(path.as_path());
+                                    let mut file_obj = file_objects_mutex.lock().unwrap();
+                                    file_obj.append(data.as_mut());
+                    }
+                    Err(_) => break, // channel closed, no more jobs
+                }
+            }
+        });
+        handles.push(handle);
+    }
+
+    // feed jobs into the queue
     for path in files_path {
-        println!("INFO: scanning file {:?}", path.as_path());
         let extension = path
             .extension()
             .and_then(|e| e.to_str())
@@ -49,22 +83,27 @@ pub fn run(args: Vec<String>) {
 
         match extension.as_str() {
             "pdf" => {
-                file_objects.append(extract_pdf_data(path.as_path()).as_mut());
+                tx.send(ScanJob::Pdf(path)).unwrap();
             }
             _ => {
                 println!("(x) Skipping not scannable type {}", extension);
             }
         }
     }
+    drop(tx); // closes the channel — workers exit their loop once queue drains
 
-    // compute tfidf for each document and save the result in TFIDF_TO_WORD_PATH
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    let file_objects: Vec<Doc> = Arc::try_unwrap(file_objects_mutex)
+        .expect("Arc still has multiple owners")
+        .into_inner()
+        .unwrap();
+
     match compute_tf_idf_wrapper(file_objects) {
-        Ok(()) => {
-            println!("INFO: succesfully saved term to tf mappings")
-        }
-        Err(e) => {
-            println!("ERROR: error in tfidf computing {e}")
-        }
+        Ok(()) => println!("INFO: succesfully saved term to tf mappings"),
+        Err(e) => println!("ERROR: error in tfidf computing {e}"),
     };
 }
 
