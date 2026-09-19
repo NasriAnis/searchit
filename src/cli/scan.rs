@@ -36,7 +36,7 @@ pub fn run(args: Vec<String>) {
     let files_path = match recursive_read_directory(path) {
         Ok(t) => t,
         Err(e) => {
-            eprint!("ERROR at recursive_read_directory() : {}", e);
+            eprint!("ERROR: recursive_read_directory() {}", e);
             println!("EXITTING NOW!");
             return;
         }
@@ -57,12 +57,24 @@ pub fn run(args: Vec<String>) {
         let handle = thread::spawn(move || {
             loop {
                 // lock just long enough to grab one job, then release
-                let job = { rx.lock().unwrap().recv() };
+                let job = { match rx.lock() {
+                    Ok(j) => j.recv(),
+                    Err(e) => {
+                        eprintln!("ERROR: scan() at rx.lock() {:?}", e);
+                        continue;
+                    }
+                } };
                 match job {
                     Ok(ScanJob::Pdf(path)) => {
                         println!("INFO: scanning PDF {:?}", path);
                         let mut data = extract_pdf_data(path.as_path());
-                        let mut file_obj = file_objects_mutex.lock().unwrap();
+                        let mut file_obj = match file_objects_mutex.lock() {
+                            Ok(fo) => fo,
+                            Err(e) => {
+                                eprintln!("ERROR: scan() at file_objects_mutex.lock() {:?}", e);
+                                continue;
+                            }
+                        };
                         file_obj.append(data.as_mut());
                     }
                     Err(_) => break, // channel closed, no more jobs
@@ -82,7 +94,13 @@ pub fn run(args: Vec<String>) {
 
         match extension.as_str() {
             "pdf" => {
-                tx.send(ScanJob::Pdf(path)).unwrap();
+                match tx.send(ScanJob::Pdf(path)) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        eprintln!("ERROR: scan() at tx.send() {:?}", e);
+                        continue;
+                    }
+                };
             }
             _ => {
                 println!("(x) Skipping not scannable type {}", extension);
@@ -92,17 +110,25 @@ pub fn run(args: Vec<String>) {
     drop(tx); // closes the channel — workers exit their loop once queue drains
 
     for handle in handles {
-        handle.join().unwrap();
+        match handle.join() {
+            Ok(_) => (),
+            Err(e) => println!("ERROR: scan() with worker error {:?}", e),
+        };
     }
 
-    let file_objects: Vec<Doc> = Arc::try_unwrap(file_objects_mutex)
+    let file_objects: Vec<Doc> = match Arc::try_unwrap(file_objects_mutex)
         .expect("Arc still has multiple owners")
-        .into_inner()
-        .unwrap();
+        .into_inner(){
+            Ok(fo) => fo,
+            Err(e) => {
+                eprint!("ERROR: scan() at collecting file objects from arc mutex {:?}", e);
+                panic!()
+            },
+        };
 
     match compute_tf_idf_wrapper(file_objects) {
         Ok(()) => println!("INFO: succesfully saved term to tf mappings"),
-        Err(e) => println!("ERROR: error in tfidf computing {e}"),
+        Err(e) => eprintln!("ERROR: scan() at compute_tf_idf_wrapper() {e}"),
     };
 }
 
@@ -112,7 +138,7 @@ fn extract_pdf_data(path: &Path) -> Vec<Doc> {
     let words_vector = match extract_text_by_pages(path) {
         Ok(t) => t,
         Err(e) => {
-            eprint!("ERROR in extracting text from pdf {:?}: {e}", path);
+            eprint!("ERROR: scan() at extract_text_by_pages() {:?} {e}", path);
             return vec![];
         }
     };
@@ -227,7 +253,7 @@ fn help() {
     println!(
         "\
 help for scan:
-    - scan <path>          Scan a directory and compute TF-IDF for all PDFs found
+    - scan <path>           Scan a directory and compute TF-IDF for all PDFs found
     - scan <path> --help    Show this message"
     );
 }

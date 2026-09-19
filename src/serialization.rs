@@ -43,28 +43,29 @@ pub fn deserialize_tfidf_to_word() -> Vec<DocTfIdf> {
     let path = TFIDF_TO_WORD_PATH;
     let entries = std::fs::read_dir(path).unwrap(); // fix
     for entry in entries {
-        match entry {
-            Ok(e) => {
-                match std::fs::File::open(e.path()) {
-                    Ok(mut file) => {
-                        let mut buffer = String::new();
-                        match file.read_to_string(&mut buffer) {
-                            Ok(_sz) => {
-                                vec_deserialized.push(serde_json::from_str(&buffer).unwrap());
-                            }
-                            Err(_) => {
-                                continue;
-                            } // fix
-                        }
-                    }
-                    Err(_) => {
-                        continue;
-                    } // fix
-                }
-            }
-            Err(_) => {
+        let e = match entry {
+            Ok(e) => e,
+            Err(e) => {
+                eprintln!("ERROR: deserialize_tfidf_to_word() {e}");
                 continue;
-            } // fix
+            }
+        };
+        let mut f = match std::fs::File::open(e.path()) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("ERROR: deserialize_tfidf_to_word() {e}");
+                continue;
+            }
+        };
+        let mut buffer = String::new();
+        match f.read_to_string(&mut buffer) {
+            Ok(_sz) => {
+                vec_deserialized.push(serde_json::from_str(&buffer).unwrap());
+            }
+            Err(e) => {
+                eprintln!("ERROR: deserialize_tfidf_to_word() {e}");
+                continue;
+            }
         }
     }
     vec_deserialized
