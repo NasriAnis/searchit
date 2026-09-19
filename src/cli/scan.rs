@@ -57,13 +57,15 @@ pub fn run(args: Vec<String>) {
         let handle = thread::spawn(move || {
             loop {
                 // lock just long enough to grab one job, then release
-                let job = { match rx.lock() {
-                    Ok(j) => j.recv(),
-                    Err(e) => {
-                        eprintln!("ERROR: scan() at rx.lock() {:?}", e);
-                        continue;
+                let job = {
+                    match rx.lock() {
+                        Ok(j) => j.recv(),
+                        Err(e) => {
+                            eprintln!("ERROR: scan() at rx.lock() {:?}", e);
+                            continue;
+                        }
                     }
-                } };
+                };
                 match job {
                     Ok(ScanJob::Pdf(path)) => {
                         println!("INFO: scanning PDF {:?}", path);
@@ -118,13 +120,17 @@ pub fn run(args: Vec<String>) {
 
     let file_objects: Vec<Doc> = match Arc::try_unwrap(file_objects_mutex)
         .expect("Arc still has multiple owners")
-        .into_inner(){
-            Ok(fo) => fo,
-            Err(e) => {
-                eprint!("ERROR: scan() at collecting file objects from arc mutex {:?}", e);
-                panic!()
-            },
-        };
+        .into_inner()
+    {
+        Ok(fo) => fo,
+        Err(e) => {
+            eprint!(
+                "ERROR: scan() at collecting file objects from arc mutex {:?}",
+                e
+            );
+            panic!()
+        }
+    };
 
     match compute_tf_idf_wrapper(file_objects) {
         Ok(()) => println!("INFO: succesfully saved term to tf mappings"),
