@@ -5,9 +5,8 @@ use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
-    vec,
-    thread,
     sync::{Arc, Mutex, mpsc},
+    thread, vec,
 };
 
 enum ScanJob {
@@ -61,10 +60,10 @@ pub fn run(args: Vec<String>) {
                 let job = { rx.lock().unwrap().recv() };
                 match job {
                     Ok(ScanJob::Pdf(path)) => {
-                                    println!("INFO: scanning PDF {:?}", path);
-                                    let mut data = extract_pdf_data(path.as_path());
-                                    let mut file_obj = file_objects_mutex.lock().unwrap();
-                                    file_obj.append(data.as_mut());
+                        println!("INFO: scanning PDF {:?}", path);
+                        let mut data = extract_pdf_data(path.as_path());
+                        let mut file_obj = file_objects_mutex.lock().unwrap();
+                        file_obj.append(data.as_mut());
                     }
                     Err(_) => break, // channel closed, no more jobs
                 }

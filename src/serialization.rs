@@ -52,13 +52,19 @@ pub fn deserialize_tfidf_to_word() -> Vec<DocTfIdf> {
                             Ok(_sz) => {
                                 vec_deserialized.push(serde_json::from_str(&buffer).unwrap());
                             }
-                            Err(_) => { continue; } // fix
+                            Err(_) => {
+                                continue;
+                            } // fix
                         }
                     }
-                    Err(_) => { continue; } // fix
+                    Err(_) => {
+                        continue;
+                    } // fix
                 }
             }
-            Err(_) => { continue; } // fix
+            Err(_) => {
+                continue;
+            } // fix
         }
     }
     vec_deserialized
