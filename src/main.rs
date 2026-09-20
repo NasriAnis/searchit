@@ -13,8 +13,8 @@ fn main() {
     } else {
         match args[1].as_str() {
             "help" => help(),
-            "scan" => cli::scan::run(args),
-            "search" => cli::search::run(args),
+            "scan" => cmds::scan::run(args),
+            "search" => cmds::search::run(args),
             _ => {
                 eprintln!("ERROR: this command doesnt exit {}", args[1]);
                 eprintln!("EXITING!")
