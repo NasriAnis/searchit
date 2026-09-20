@@ -1,6 +1,6 @@
 use std::env;
 
-pub mod cli;
+pub mod cmds;
 pub mod config;
 pub mod serialization;
 pub mod tf_idf;
