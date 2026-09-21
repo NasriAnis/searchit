@@ -4,7 +4,11 @@ pub fn tokenize(text: String) -> Vec<String> {
     let mut tokens: Vec<String> = vec![];
     let parts: Vec<&str> = text.split_whitespace().collect();
     for part in parts {
-        tokens.push(part.to_string());
+        let cleaned = part.trim_matches(|c: char| !c.is_alphanumeric());
+        if cleaned.is_empty() {
+            continue;
+        }
+        tokens.push(cleaned.to_ascii_lowercase());
     }
     tokens
 }
