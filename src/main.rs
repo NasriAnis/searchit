@@ -15,12 +15,22 @@ fn main() {
             "help" => help(),
             "scan" => cmds::scan::run(args),
             "search" => {
-                let top_documents = cmds::search::run(args);
-                for (doc, score) in &top_documents {
-                    println!("{:?} at {:?} with score: {:.4}", doc.path, doc.page, score);
-                }
+                match cmds::search::run(args){
+                    Ok(td) => {
+                        for (doc, score) in &td {
+                            println!("{:?} at {:?} with score: {:.4}", doc.path, doc.page, score);
+                        }
+
+                    },
+                    Err(e) => eprintln!("ERROR: {}", e),
+                };
             }
-            "serve" => cmds::server::run(),
+            "serve" => {
+                match cmds::server::run() {
+                    Ok(_) => (),
+                    Err(e) => eprintln!("ERROR: {}", e),
+                };
+            }
             _ => {
                 eprintln!("ERROR: this command doesnt exit {}", args[1]);
                 eprintln!("EXITING!")

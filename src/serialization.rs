@@ -33,40 +33,21 @@ pub fn serialize_tfidf_to_word(
         terms,
     };
     // impl: check if files already exit and handle that
-    let serialized = serde_json::to_string(&data).unwrap(); // fix
-    let _ = writeln!(writer, "{}", serialized); // fix
+    let serialized = serde_json::to_string(&data)?;
+    writeln!(writer, "{}", serialized)?;
     Ok(())
 }
 
-pub fn deserialize_tfidf_to_word() -> Vec<DocTfIdf> {
+pub fn deserialize_tfidf_to_word() -> Result<Vec<DocTfIdf>, io::Error> {
     let mut vec_deserialized: Vec<DocTfIdf> = Vec::new();
     let path = TFIDF_TO_WORD_PATH;
-    let entries = std::fs::read_dir(path).unwrap(); // fix
+    let entries = std::fs::read_dir(path)?;
     for entry in entries {
-        let e = match entry {
-            Ok(e) => e,
-            Err(e) => {
-                eprintln!("ERROR: deserialize_tfidf_to_word() {e}");
-                continue;
-            }
-        };
-        let mut f = match std::fs::File::open(e.path()) {
-            Ok(f) => f,
-            Err(e) => {
-                eprintln!("ERROR: deserialize_tfidf_to_word() {e}");
-                continue;
-            }
-        };
+        let e = entry?;
+        let mut f = std::fs::File::open(e.path())?;
         let mut buffer = String::new();
-        match f.read_to_string(&mut buffer) {
-            Ok(_sz) => {
-                vec_deserialized.push(serde_json::from_str(&buffer).unwrap());
-            }
-            Err(e) => {
-                eprintln!("ERROR: deserialize_tfidf_to_word() {e}");
-                continue;
-            }
-        }
+        f.read_to_string(&mut buffer)?;
+        vec_deserialized.push(serde_json::from_str(&buffer)?);
     }
-    vec_deserialized
+    Ok(vec_deserialized)
 }

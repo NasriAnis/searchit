@@ -1,4 +1,5 @@
 use tiny_http::{Method, Request, Response, Server, StatusCode};
+use std::io;
 use std::path::Path;
 use std::fs::File;
 
@@ -13,14 +14,11 @@ struct SearchResult {
     score: f64,
 }
 
-pub fn run(){
+pub fn run() -> Result<(), io::Error> {
     let server = Server::http("0.0.0.0:8000").unwrap();
 
     loop {
-        let mut request = match server.recv() {
-            Ok(rq) => rq,
-            Err(e) => { println!("error: {}", e); break }
-        };
+        let mut request = server.recv()?;
 
         let method = request.method().clone();
         let url = request.url().to_string();
@@ -42,7 +40,7 @@ pub fn run(){
                 let mut query = String::new();
                 let _ = request.as_reader().read_to_string(&mut query);
 
-                let documents: Vec<(serialization::DocTfIdf, f64)> = search::run(vec!["".to_string(), "".to_string(), query.clone()]);
+                let documents: Vec<(serialization::DocTfIdf, f64)> = search::run(vec!["".to_string(), "".to_string(), query.clone()])?;
 
                 let results: Vec<SearchResult> = documents
                     .into_iter()
@@ -64,7 +62,7 @@ pub fn run(){
                 let _ = request.respond(response);
             }
             (Method::Get, url) if url.starts_with("/files/") => {
-                serve_pdf_inline(request, url);
+                serve_pdf_inline(request, url)?;
             }
             (Method::Get, "/index.js") => {
                 serve_file(request, "templates/index.js", "text/javascript; charset=utf-8");
@@ -85,7 +83,7 @@ fn serve_file(request: Request, path: &str, content_type: &str){
         ));
 }
 
-fn serve_pdf_inline(request: Request, url: &str) {
+fn serve_pdf_inline(request: Request, url: &str) -> Result<(), io::Error> {
     // url is like "/files/some%2Fnested%2Fpath.pdf"
     let raw_path = &url["/files/".len()..];
     let decoded = percent_decode(raw_path);
@@ -93,18 +91,11 @@ fn serve_pdf_inline(request: Request, url: &str) {
     // reject path traversal
     if decoded.contains("..") {
         let _ = request.respond(Response::empty(StatusCode::from(400)));
-        return;
+        return Ok(())
     }
 
     let full_path = Path::new(&decoded);
-
-    let file = match File::open(full_path) {
-        Ok(f) => f,
-        Err(_) => {
-            let _ = request.respond(Response::empty(StatusCode::from(404)));
-            return;
-        }
-    };
+    let file = File::open(full_path)?;
 
     let filename = full_path
         .file_name()
@@ -127,6 +118,7 @@ fn serve_pdf_inline(request: Request, url: &str) {
         );
 
     let _ = request.respond(response);
+    Ok(())
 }
 
 fn percent_decode(s: &str) -> String {

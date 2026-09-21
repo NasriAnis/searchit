@@ -1,15 +1,20 @@
 use std::collections::HashMap;
+use std::io;
 
 use crate::config::TOP_RESULTS;
 use crate::serialization::{DocTfIdf, deserialize_tfidf_to_word};
 use crate::token;
 
-pub fn run(args: Vec<String>) -> Vec<(DocTfIdf, f64)> {
+pub fn run(args: Vec<String>) -> Result<Vec<(DocTfIdf, f64)>, io::Error> {
     if args.len() < 3 {
         help();
     }
+
+    // tokenize user search query
     let user_tokens = token::tokenize(args[2].clone());
-    let deserialized_data = deserialize_tfidf_to_word();
+
+    // get stored data
+    let deserialized_data = deserialize_tfidf_to_word()?;
 
     let mut scores: HashMap<usize, f64> = HashMap::new();
 
@@ -31,7 +36,7 @@ pub fn run(args: Vec<String>) -> Vec<(DocTfIdf, f64)> {
         .map(|(idx, score)| (deserialized_data[idx].clone(), score))
         .collect();
 
-    top
+    Ok(top)
 }
 
 fn help() {
