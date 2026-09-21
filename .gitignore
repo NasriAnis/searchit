@@ -4,7 +4,7 @@ test/
 old/
 compile_commands.json
 db/
-
+__pycache__/
 
 # Added by cargo
 
