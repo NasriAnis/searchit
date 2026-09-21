@@ -1,6 +1,9 @@
 use crate::config::{MAX_WORKERS, TFIDF_TO_WORD_PATH};
 use crate::{serialization::serialize_tfidf_to_word, tf_idf::compute, token};
 use pdf_extract::extract_text_by_pages;
+use std::fmt::Write;
+use std::sync::mpsc::{Receiver, Sender};
+use std::thread::JoinHandle;
 use std::{
     collections::HashMap,
     io,
@@ -43,48 +46,7 @@ pub fn run(args: Vec<String>) {
     };
 
     let file_objects_mutex: Arc<Mutex<Vec<Doc>>> = Arc::new(Mutex::new(vec![]));
-
-    // job queue: main thread sends paths, workers consume
-    let (tx, rx) = mpsc::channel::<ScanJob>();
-    let rx = Arc::new(Mutex::new(rx));
-
-    let mut handles = vec![];
-
-    for _ in 0..MAX_WORKERS {
-        let rx = Arc::clone(&rx);
-        let file_objects_mutex = Arc::clone(&file_objects_mutex);
-
-        let handle = thread::spawn(move || {
-            loop {
-                // lock just long enough to grab one job, then release
-                let job = {
-                    match rx.lock() {
-                        Ok(j) => j.recv(),
-                        Err(e) => {
-                            eprintln!("ERROR: scan() at rx.lock() {:?}", e);
-                            continue;
-                        }
-                    }
-                };
-                match job {
-                    Ok(ScanJob::Pdf(path)) => {
-                        println!("INFO: scanning PDF {:?}", path);
-                        let mut data = extract_pdf_data(path.as_path());
-                        let mut file_obj = match file_objects_mutex.lock() {
-                            Ok(fo) => fo,
-                            Err(e) => {
-                                eprintln!("ERROR: scan() at file_objects_mutex.lock() {:?}", e);
-                                continue;
-                            }
-                        };
-                        file_obj.append(data.as_mut());
-                    }
-                    Err(_) => break, // channel closed, no more jobs
-                }
-            }
-        });
-        handles.push(handle);
-    }
+    let (tx, handles) = workers(file_objects_mutex.clone());
 
     // feed jobs into the queue
     for path in files_path {
@@ -253,6 +215,50 @@ fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
 
 fn get_tokens(text: String) -> HashMap<String, usize> {
     token::count_individual_token(token::tokenize(text))
+}
+
+fn workers<T: Extend<Doc> + Send + 'static>(objects: Arc<Mutex<T>>) -> (Sender<ScanJob>, Vec<JoinHandle<()>>) {
+    let (tx, rx) = mpsc::channel::<ScanJob>();
+    let rx = Arc::new(Mutex::new(rx));
+
+    let mut handles = vec![];
+
+    for _ in 0..MAX_WORKERS {
+        let rx = Arc::clone(&rx);
+        let objects_mutex = Arc::clone(&objects);
+
+        let handle = thread::spawn(move || {
+            loop {
+                // lock just long enough to grab one job, then release
+                let job = {
+                    match rx.lock() {
+                        Ok(j) => j.recv(),
+                        Err(e) => {
+                            eprintln!("ERROR: scan() at rx.lock() {:?}", e);
+                            continue;
+                        }
+                    }
+                };
+                match job {
+                    Ok(ScanJob::Pdf(path)) => {
+                        println!("INFO: scanning PDF {:?}", path);
+                        let data = extract_pdf_data(path.as_path());
+                        let mut file_obj = match objects_mutex.lock() {
+                            Ok(fo) => fo,
+                            Err(e) => {
+                                eprintln!("ERROR: scan() at file_objects_mutex.lock() {:?}", e);
+                                continue;
+                            }
+                        };
+                        file_obj.extend(data);
+                    }
+                    Err(_) => break, // channel closed, no more jobs
+                }
+            }
+        });
+        handles.push(handle);
+    }
+    (tx, handles)
 }
 
 fn help() {
