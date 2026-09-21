@@ -14,7 +14,13 @@ fn main() {
         match args[1].as_str() {
             "help" => help(),
             "scan" => cmds::scan::run(args),
-            "search" => cmds::search::run(args),
+            "search" => {
+                let top_documents = cmds::search::run(args);
+                for (doc, score) in &top_documents {
+                    println!("{:?} at {:?} with score: {:.4}", doc.path, doc.page, score);
+                }
+            }
+            "serve" => cmds::server::run(),
             _ => {
                 eprintln!("ERROR: this command doesnt exit {}", args[1]);
                 eprintln!("EXITING!")

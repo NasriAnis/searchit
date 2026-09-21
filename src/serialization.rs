@@ -9,7 +9,7 @@ use std::{
     io::{self, BufWriter, Write},
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DocTfIdf {
     pub path: String,
     pub page: u32,
