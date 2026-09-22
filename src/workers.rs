@@ -2,24 +2,15 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
-/// Errors that can originate from the pool itself, as opposed to from
-/// the caller's `process` closure. Kept separate from the caller's own
-/// error type so the pool never needs to know anything about it beyond
-/// "can be built from a PoolError".
 #[derive(Debug)]
 pub enum PoolError {
-    /// The job queue's lock was poisoned — another worker panicked
-    /// while holding it.
     LockPoisoned,
 }
 
-/// A generic worker pool: feed it jobs of type `J`, give it a function
-/// that turns a `J` into a `Result<O, E>`, get back a channel of results.
-///
-/// `E` must be constructible from a `PoolError` so that failures inside
-/// the pool (not just inside `process`) can still reach the caller
-/// through the same `results_rx` stream, instead of being silently
-/// swallowed inside the worker thread.
+// J = Job. The type of work item you feed in.
+// O = Output. The type you get back on success.
+// E = Error.
+// F = the actual function/closure that does the work — turns one J into a Result<O, E>.
 pub fn spawn_worker_pool<J, O, E, F>(
     num_workers: usize,
     process: F,
