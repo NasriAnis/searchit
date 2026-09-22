@@ -17,7 +17,7 @@ pub fn extract_pdf_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
     let words_vector = extract_text_by_pages(path)?;
 
     for (page, w) in (0_u32..).zip(words_vector) {
-        let tokens_hashmap = get_tokens(w);
+        let tokens_hashmap = token::count_individual_token(token::tokenize(w));
         file_objects.push(Doc {
             loc: Loc {
                 path: path.to_path_buf(),
@@ -113,10 +113,6 @@ pub fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
         )?;
     }
     Ok(())
-}
-
-pub fn get_tokens(text: String) -> HashMap<String, usize> {
-    token::count_individual_token(token::tokenize(text))
 }
 
 pub fn help() {
