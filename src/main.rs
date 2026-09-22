@@ -5,6 +5,7 @@ pub mod config;
 pub mod serialization;
 pub mod tf_idf;
 pub mod token;
+pub mod workers;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

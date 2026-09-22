@@ -1,16 +1,38 @@
 use crate::config::{MAX_WORKERS, TFIDF_TO_WORD_PATH};
+use crate::workers::{PoolError, spawn_worker_pool};
 use crate::{serialization::serialize_tfidf_to_word, tf_idf::compute, token};
-use pdf_extract::extract_text_by_pages;
-use std::fmt::Write;
-use std::sync::mpsc::{Receiver, Sender};
-use std::thread::JoinHandle;
+use pdf_extract::{OutputError, extract_text_by_pages};
 use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, mpsc},
-    thread, vec,
+    vec,
 };
+
+#[derive(Debug)]
+enum ScanError {
+    Io(std::io::Error),
+    PdfExtract(pdf_extract::OutputError),
+    LockPoisoned,
+}
+
+impl From<std::io::Error> for ScanError {
+    fn from(e: std::io::Error) -> Self {
+        ScanError::Io(e)
+    }
+}
+impl From<OutputError> for ScanError {
+    fn from(e: OutputError) -> Self {
+        ScanError::PdfExtract(e)
+    }
+}
+impl From<PoolError> for ScanError {
+    fn from(e: PoolError) -> Self {
+        match e {
+            PoolError::LockPoisoned => ScanError::LockPoisoned,
+        }
+    }
+}
 
 enum ScanJob {
     Pdf(PathBuf),
@@ -32,6 +54,7 @@ struct Loc {
 pub fn run(args: Vec<String>) {
     if args.len() < 3 {
         help();
+        return;
     }
     let path = Path::new(&args[2]);
 
@@ -39,60 +62,62 @@ pub fn run(args: Vec<String>) {
     let files_path = match recursive_read_directory(path) {
         Ok(t) => t,
         Err(e) => {
-            eprint!("ERROR: recursive_read_directory() {}", e);
+            eprintln!("ERROR: recursive_read_directory() {}", e);
             println!("EXITTING NOW!");
             return;
         }
     };
 
-    let file_objects_mutex: Arc<Mutex<Vec<Doc>>> = Arc::new(Mutex::new(vec![]));
-    let (tx, handles) = workers(file_objects_mutex.clone());
+    let (job_tx, results_rx, handles) = spawn_worker_pool(
+        MAX_WORKERS,
+        |job: ScanJob| -> Result<Vec<Doc>, ScanError> {
+            match job {
+                ScanJob::Pdf(path) => extract_pdf_data(&path),
+            }
+        },
+    );
 
-    // feed jobs into the queue
     for path in files_path {
-        let extension = path
+        let ext = path
             .extension()
             .and_then(|e| e.to_str())
-            .unwrap_or("unknown")
-            .to_string();
-
-        match extension.as_str() {
+            .unwrap_or("unknown");
+        println!("INFO: incoming scan of {path:?}");
+        match ext {
             "pdf" => {
-                match tx.send(ScanJob::Pdf(path)) {
-                    Ok(_) => (),
-                    Err(e) => {
-                        eprintln!("ERROR: scan() at tx.send() {:?}", e);
-                        continue;
-                    }
-                };
+                if job_tx.send(ScanJob::Pdf(path)).is_err() {
+                    eprintln!("FATAL: worker pool is dead, aborting scan");
+                    break; // no point sending more, nobody will receive them
+                }
             }
-            _ => {
-                println!("(x) Skipping not scannable type {}", extension);
+            _ => println!("(x) Skipping not scannable type {}", ext),
+        }
+    }
+    drop(job_tx); // no more jobs — lets workers exit once the queue drains
+
+    let mut file_objects: Vec<Doc> = vec![];
+    let mut failures: Vec<ScanError> = vec![];
+    for result in results_rx {
+        match result {
+            Ok(mut docs) => file_objects.append(&mut docs),
+            Err(e) => {
+                eprintln!("ERROR: worker failed: {:?}", e);
+                failures.push(e);
             }
         }
     }
-    drop(tx); // closes the channel — workers exit their loop once queue drains
+    if !failures.is_empty() {
+        eprintln!(
+            "WARN: {} job(s) failed during scan (see above for details)",
+            failures.len()
+        );
+    }
 
     for handle in handles {
-        match handle.join() {
-            Ok(_) => (),
-            Err(e) => println!("ERROR: scan() with worker error {:?}", e),
-        };
-    }
-
-    let file_objects: Vec<Doc> = match Arc::try_unwrap(file_objects_mutex)
-        .expect("Arc still has multiple owners")
-        .into_inner()
-    {
-        Ok(fo) => fo,
-        Err(e) => {
-            eprint!(
-                "ERROR: scan() at collecting file objects from arc mutex {:?}",
-                e
-            );
-            panic!()
+        if let Err(panic) = handle.join() {
+            eprintln!("ERROR: worker thread panicked: {:?}", panic);
         }
-    };
+    }
 
     match compute_tf_idf_wrapper(file_objects) {
         Ok(()) => println!("INFO: succesfully saved term to tf mappings"),
@@ -100,16 +125,9 @@ pub fn run(args: Vec<String>) {
     };
 }
 
-fn extract_pdf_data(path: &Path) -> Vec<Doc> {
+fn extract_pdf_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
     let mut file_objects: Vec<Doc> = vec![];
-
-    let words_vector = match extract_text_by_pages(path) {
-        Ok(t) => t,
-        Err(e) => {
-            eprint!("ERROR: scan() at extract_text_by_pages() {:?} {e}", path);
-            return vec![];
-        }
-    };
+    let words_vector = extract_text_by_pages(path)?;
 
     for (page, w) in (0_u32..).zip(words_vector) {
         let tokens_hashmap = get_tokens(w);
@@ -122,7 +140,7 @@ fn extract_pdf_data(path: &Path) -> Vec<Doc> {
             words: tokens_hashmap,
         });
     }
-    file_objects
+    Ok(file_objects)
 }
 
 fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
@@ -180,12 +198,9 @@ fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
         for w in words_hashmap {
             let n_t_in_d = w.1; // count of term in document
             let term = w.0; // the term
-            let d_with_t_value = match d_with_t.get(&term) {
-                Some(t) => t,
-                None => {
-                    panic!()
-                }
-            };
+            let d_with_t_value = d_with_t
+                .get(&term)
+                .expect("term seen in doc.words must be in d_with_t");
             let tf_idf = compute(
                 n_t_in_d as f64,
                 w_count_in_d as f64,
@@ -208,57 +223,13 @@ fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
             doc.extension,
             tf_to_word,
             file_name,
-        )?; // fix
+        )?;
     }
     Ok(())
 }
 
 fn get_tokens(text: String) -> HashMap<String, usize> {
     token::count_individual_token(token::tokenize(text))
-}
-
-fn workers<T: Extend<Doc> + Send + 'static>(objects: Arc<Mutex<T>>) -> (Sender<ScanJob>, Vec<JoinHandle<()>>) {
-    let (tx, rx) = mpsc::channel::<ScanJob>();
-    let rx = Arc::new(Mutex::new(rx));
-
-    let mut handles = vec![];
-
-    for _ in 0..MAX_WORKERS {
-        let rx = Arc::clone(&rx);
-        let objects_mutex = Arc::clone(&objects);
-
-        let handle = thread::spawn(move || {
-            loop {
-                // lock just long enough to grab one job, then release
-                let job = {
-                    match rx.lock() {
-                        Ok(j) => j.recv(),
-                        Err(e) => {
-                            eprintln!("ERROR: scan() at rx.lock() {:?}", e);
-                            continue;
-                        }
-                    }
-                };
-                match job {
-                    Ok(ScanJob::Pdf(path)) => {
-                        println!("INFO: scanning PDF {:?}", path);
-                        let data = extract_pdf_data(path.as_path());
-                        let mut file_obj = match objects_mutex.lock() {
-                            Ok(fo) => fo,
-                            Err(e) => {
-                                eprintln!("ERROR: scan() at file_objects_mutex.lock() {:?}", e);
-                                continue;
-                            }
-                        };
-                        file_obj.extend(data);
-                    }
-                    Err(_) => break, // channel closed, no more jobs
-                }
-            }
-        });
-        handles.push(handle);
-    }
-    (tx, handles)
 }
 
 fn help() {
