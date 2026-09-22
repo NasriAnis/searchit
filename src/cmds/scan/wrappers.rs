@@ -1,7 +1,6 @@
-use crate::config::{MAX_WORKERS, TFIDF_TO_WORD_PATH};
-use crate::workers::{PoolError, spawn_worker_pool};
+use crate::config::TFIDF_TO_WORD_PATH;
 use crate::{serialization::serialize_tfidf_to_word, tf_idf::compute, token};
-use pdf_extract::{OutputError, extract_text_by_pages};
+use pdf_extract::extract_text_by_pages;
 use std::{
     collections::HashMap,
     io,
@@ -9,123 +8,11 @@ use std::{
     vec,
 };
 
-#[derive(Debug)]
-enum ScanError {
-    Io(std::io::Error),
-    PdfExtract(pdf_extract::OutputError),
-    LockPoisoned,
-}
+use crate::cmds::scan::error_handling::ScanError;
+use crate::cmds::scan::structures::Doc;
+use crate::cmds::scan::structures::Loc;
 
-impl From<std::io::Error> for ScanError {
-    fn from(e: std::io::Error) -> Self {
-        ScanError::Io(e)
-    }
-}
-impl From<OutputError> for ScanError {
-    fn from(e: OutputError) -> Self {
-        ScanError::PdfExtract(e)
-    }
-}
-impl From<PoolError> for ScanError {
-    fn from(e: PoolError) -> Self {
-        match e {
-            PoolError::LockPoisoned => ScanError::LockPoisoned,
-        }
-    }
-}
-
-enum ScanJob {
-    Pdf(PathBuf),
-}
-
-#[derive(Debug)]
-struct Doc {
-    loc: Loc,
-    extension: String,
-    words: HashMap<String, usize>,
-}
-
-#[derive(Debug)]
-struct Loc {
-    path: PathBuf,
-    page: u32,
-}
-
-pub fn run(args: Vec<String>) {
-    if args.len() < 3 {
-        help();
-        return;
-    }
-    let path = Path::new(&args[2]);
-
-    println!("INFO: reading directory");
-    let files_path = match recursive_read_directory(path) {
-        Ok(t) => t,
-        Err(e) => {
-            eprintln!("ERROR: recursive_read_directory() {}", e);
-            println!("EXITTING NOW!");
-            return;
-        }
-    };
-
-    let (job_tx, results_rx, handles) = spawn_worker_pool(
-        MAX_WORKERS,
-        |job: ScanJob| -> Result<Vec<Doc>, ScanError> {
-            match job {
-                ScanJob::Pdf(path) => extract_pdf_data(&path),
-            }
-        },
-    );
-
-    for path in files_path {
-        let ext = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("unknown");
-        println!("INFO: incoming scan of {path:?}");
-        match ext {
-            "pdf" => {
-                if job_tx.send(ScanJob::Pdf(path)).is_err() {
-                    eprintln!("FATAL: worker pool is dead, aborting scan");
-                    break; // no point sending more, nobody will receive them
-                }
-            }
-            _ => println!("(x) Skipping not scannable type {}", ext),
-        }
-    }
-    drop(job_tx); // no more jobs — lets workers exit once the queue drains
-
-    let mut file_objects: Vec<Doc> = vec![];
-    let mut failures: Vec<ScanError> = vec![];
-    for result in results_rx {
-        match result {
-            Ok(mut docs) => file_objects.append(&mut docs),
-            Err(e) => {
-                eprintln!("ERROR: worker failed: {:?}", e);
-                failures.push(e);
-            }
-        }
-    }
-    if !failures.is_empty() {
-        eprintln!(
-            "WARN: {} job(s) failed during scan (see above for details)",
-            failures.len()
-        );
-    }
-
-    for handle in handles {
-        if let Err(panic) = handle.join() {
-            eprintln!("ERROR: worker thread panicked: {:?}", panic);
-        }
-    }
-
-    match compute_tf_idf_wrapper(file_objects) {
-        Ok(()) => println!("INFO: succesfully saved term to tf mappings"),
-        Err(e) => eprintln!("ERROR: scan() at compute_tf_idf_wrapper() {e}"),
-    };
-}
-
-fn extract_pdf_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
+pub fn extract_pdf_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
     let mut file_objects: Vec<Doc> = vec![];
     let words_vector = extract_text_by_pages(path)?;
 
@@ -143,7 +30,7 @@ fn extract_pdf_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
     Ok(file_objects)
 }
 
-fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
+pub fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
     let dire_files = path.read_dir()?;
     let mut files_path: Vec<PathBuf> = vec![];
 
@@ -180,7 +67,7 @@ fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error>
     Ok(files_path)
 }
 
-fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
+pub fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
     let d_count = file_objects.len(); // number of documents
 
     let mut d_with_t: HashMap<String, usize> = HashMap::new(); // document frequency per term
@@ -228,11 +115,11 @@ fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
     Ok(())
 }
 
-fn get_tokens(text: String) -> HashMap<String, usize> {
+pub fn get_tokens(text: String) -> HashMap<String, usize> {
     token::count_individual_token(token::tokenize(text))
 }
 
-fn help() {
+pub fn help() {
     println!(
         "\
 help for scan:

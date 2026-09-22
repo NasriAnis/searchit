@@ -7,6 +7,9 @@ pub mod tf_idf;
 pub mod token;
 pub mod workers;
 
+use cmds::scan::scanner;
+use cmds::server::serve;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
@@ -14,20 +17,19 @@ fn main() {
     } else {
         match args[1].as_str() {
             "help" => help(),
-            "scan" => cmds::scan::run(args),
+            "scan" => scanner::run(args),
             "search" => {
-                match cmds::search::run(args){
+                match cmds::search::run(args) {
                     Ok(td) => {
                         for (doc, score) in &td {
                             println!("{:?} at {:?} with score: {:.4}", doc.path, doc.page, score);
                         }
-
-                    },
+                    }
                     Err(e) => eprintln!("ERROR: {}", e),
                 };
             }
             "serve" => {
-                match cmds::server::run() {
+                match serve::run() {
                     Ok(_) => (),
                     Err(e) => eprintln!("ERROR: {}", e),
                 };
