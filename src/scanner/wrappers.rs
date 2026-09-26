@@ -1,5 +1,5 @@
 use crate::config::TFIDF_TO_WORD_PATH;
-use crate::{serialization::serialize_tfidf_to_word, tf_idf::compute, token};
+use crate::{serialization::DocTfIdf, tf_idf::compute, token};
 use pdf_extract::extract_text_by_pages;
 use std::{
     collections::HashMap,
@@ -104,13 +104,12 @@ pub fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
             .unwrap_or("unknown");
         let file_name = format!("{}{}:{}.json", TFIDF_TO_WORD_PATH, file_stem, doc.loc.page);
 
-        serialize_tfidf_to_word(
-            doc.loc.path.as_path().display().to_string(),
-            doc.loc.page,
-            doc.extension,
-            tf_to_word,
-            file_name,
-        )?;
+        DocTfIdf {
+            path: doc.loc.path.as_path().display().to_string(),
+            page: doc.loc.page,
+            extension: doc.extension,
+            terms: tf_to_word,
+        }.serialize(file_name);
     }
     Ok(())
 }

@@ -2,8 +2,9 @@ use std::collections::HashMap;
 use std::io;
 
 use crate::config::TOP_RESULTS;
-use crate::serialization::{DocTfIdf, deserialize_tfidf_to_word};
+use crate::serialization::DocTfIdf;
 use crate::token;
+use crate::config::TFIDF_TO_WORD_PATH;
 
 pub fn run(args: Vec<String>) -> Result<Vec<(DocTfIdf, f64)>, io::Error> {
     if args.len() < 3 {
@@ -14,7 +15,7 @@ pub fn run(args: Vec<String>) -> Result<Vec<(DocTfIdf, f64)>, io::Error> {
     let user_tokens = token::tokenize(args[2].clone());
 
     // get stored data
-    let deserialized_data = deserialize_tfidf_to_word()?;
+    let deserialized_data = DocTfIdf::deserialize(TFIDF_TO_WORD_PATH)?;
 
     let mut scores: HashMap<usize, f64> = HashMap::new();
 
