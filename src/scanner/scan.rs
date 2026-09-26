@@ -10,22 +10,15 @@ enum ScanJob {
     Pdf(PathBuf),
 }
 
-pub fn run(args: Vec<String>) {
+pub fn run(args: Vec<String>) -> Result<(), ScanError> {
     if args.len() < 3 {
         wrappers::help();
-        return;
+        Err(());
     }
     let path = Path::new(&args[2]);
 
     println!("INFO: reading directory");
-    let files_path = match wrappers::recursive_read_directory(path) {
-        Ok(t) => t,
-        Err(e) => {
-            eprintln!("ERROR: recursive_read_directory() {}", e);
-            println!("EXITTING NOW!");
-            return;
-        }
-    };
+    let files_path = wrappers::recursive_read_directory(path)?;
 
     let (job_tx, results_rx, handles) =
         spawn_worker_pool(MAX_WORKERS, |job: ScanJob| -> Result<Vec<Doc>, ScanError> {
@@ -76,8 +69,7 @@ pub fn run(args: Vec<String>) {
         }
     }
 
-    match wrappers::compute_tf_idf_wrapper(file_objects) {
-        Ok(()) => println!("INFO: succesfully saved term to tf mappings"),
-        Err(e) => eprintln!("ERROR: scan() at compute_tf_idf_wrapper() {e}"),
-    };
+    wrappers::compute_tf_idf_wrapper(file_objects)?;
+
+    Ok(())
 }

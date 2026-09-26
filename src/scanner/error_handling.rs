@@ -25,3 +25,12 @@ impl From<PoolError> for ScanError {
         }
     }
 }
+impl std::fmt::Display for ScanError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ScanError::Io(e) => write!(f, "IO error: {}", e),
+            ScanError::PdfExtract(e) => write!(f, "PDF extraction error: {}", e),
+            ScanError::LockPoisoned => write!(f, "lock poisoned"),
+        }
+    }
+}

@@ -30,7 +30,7 @@ pub fn extract_pdf_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
     Ok(file_objects)
 }
 
-pub fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
+pub fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, ScanError> {
     let dire_files = path.read_dir()?;
     let mut files_path: Vec<PathBuf> = vec![];
 
@@ -67,7 +67,7 @@ pub fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, std::io::Er
     Ok(files_path)
 }
 
-pub fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
+pub fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), ScanError> {
     let d_count = file_objects.len(); // number of documents
 
     let mut d_with_t: HashMap<String, usize> = HashMap::new(); // document frequency per term
@@ -109,7 +109,7 @@ pub fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), io::Error> {
             page: doc.loc.page,
             extension: doc.extension,
             terms: tf_to_word,
-        }.serialize(file_name);
+        }.serialize(file_name)?;
     }
     Ok(())
 }

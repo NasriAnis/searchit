@@ -16,7 +16,10 @@ fn main() {
     } else {
         match args[1].as_str() {
             "help" => help(),
-            "scan" => scanner::scan::run(args),
+            "scan" => match scanner::scan::run(args){
+                Ok(_) => (),
+                Err(e) => eprintln!("ERROR: scan {e}"),
+            },
             "search" => {
                 match search::run(args) {
                     Ok(td) => {
