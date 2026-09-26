@@ -3,7 +3,6 @@ use crate::{serialization::DocTfIdf, tf_idf::compute, token};
 use pdf_extract::extract_text_by_pages;
 use std::{
     collections::HashMap,
-    io,
     path::{Path, PathBuf},
     vec,
 };
