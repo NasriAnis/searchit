@@ -1,14 +1,13 @@
 use std::env;
 
-pub mod cmds;
+pub mod scanner;
+pub mod server;
+pub mod search;
 pub mod config;
 pub mod serialization;
 pub mod tf_idf;
 pub mod token;
 pub mod workers;
-
-use cmds::scan::scanner;
-use cmds::server::serve;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -17,9 +16,9 @@ fn main() {
     } else {
         match args[1].as_str() {
             "help" => help(),
-            "scan" => scanner::run(args),
+            "scan" => scanner::scan::run(args),
             "search" => {
-                match cmds::search::run(args) {
+                match search::run(args) {
                     Ok(td) => {
                         for (doc, score) in &td {
                             println!("{:?} at {:?} with score: {:.4}", doc.path, doc.page, score);
@@ -29,7 +28,7 @@ fn main() {
                 };
             }
             "serve" => {
-                match serve::run() {
+                match server::serve::run() {
                     Ok(_) => (),
                     Err(e) => eprintln!("ERROR: {}", e),
                 };

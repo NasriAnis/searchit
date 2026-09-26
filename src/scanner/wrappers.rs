@@ -8,9 +8,9 @@ use std::{
     vec,
 };
 
-use crate::cmds::scan::error_handling::ScanError;
-use crate::cmds::scan::structures::Doc;
-use crate::cmds::scan::structures::Loc;
+use crate::scanner::error_handling::ScanError;
+use crate::scanner::structures::Doc;
+use crate::scanner::structures::Loc;
 
 pub fn extract_pdf_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
     let mut file_objects: Vec<Doc> = vec![];

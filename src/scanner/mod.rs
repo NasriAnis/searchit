@@ -1,4 +1,4 @@
 mod error_handling;
-pub mod scanner;
+pub mod scan;
 mod structures;
 mod wrappers;

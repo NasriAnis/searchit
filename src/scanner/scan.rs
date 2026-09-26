@@ -2,9 +2,9 @@ use crate::config::MAX_WORKERS;
 use crate::workers::spawn_worker_pool;
 use std::{path::Path, path::PathBuf, vec};
 
-use crate::cmds::scan::error_handling::ScanError;
-use crate::cmds::scan::structures::Doc;
-use crate::cmds::scan::wrappers;
+use crate::scanner::error_handling::ScanError;
+use crate::scanner::structures::Doc;
+use crate::scanner::wrappers;
 
 enum ScanJob {
     Pdf(PathBuf),

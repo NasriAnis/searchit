@@ -1,9 +1,9 @@
 use std::io;
 use tiny_http::{Method, Response, Server, StatusCode};
 
-use crate::cmds::search;
+use crate::search;
 use crate::serialization;
-use crate::cmds::server::wrappers;
+use crate::server::wrappers;
 
 #[derive(serde::Serialize)]
 struct SearchResult {
