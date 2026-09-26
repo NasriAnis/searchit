@@ -50,6 +50,8 @@ fn help() {
 help section :
     - help <command> : get help for a specific command
     - scan <path> : scan a directory to prepare for searching
+    - search <query> : search for relevent documents
+    - serve : serve the web site
     "
     )
 }
