@@ -65,7 +65,7 @@ pub fn run() -> Result<(), io::Error> {
                 let _ = request.respond(response);
             }
             (Method::Get, url) if url.starts_with("/files/") => {
-                wrappers::serve_pdf_inline(request, url)?;
+                wrappers::serve_file_inline(request, url)?;
             }
             (Method::Get, "/index.js") => {
                 wrappers::serve_file(

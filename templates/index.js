@@ -9,9 +9,12 @@ async function doSearch(query) {
         const li = document.createElement('li');
         const a = document.createElement('a');
         // encodeURIComponent turns "/" into "%2F" — matches the urlencoding decode server-side
-        a.href = `/files/${encodeURIComponent(doc.path)}#page=${doc.page}`;
+        if (doc.extension == "pdf")
+          a.href = `/files/${encodeURIComponent(doc.path)}#page=${doc.page}`;
+        else if (doc.extension == "html")
+          a.href = `/files/${encodeURIComponent(doc.path)}`;
         a.target = '_blank';
-        a.textContent = `${doc.path} (page ${doc.page})`;
+        a.textContent = `${doc.path} (page ${doc.page}) (File type ${doc.extension})`;
         li.appendChild(a);
         container.appendChild(li);
     });
