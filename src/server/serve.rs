@@ -16,6 +16,7 @@ struct SearchResult {
 
 pub fn run() -> Result<(), io::Error> {
     let server = Server::http(SERVING_IP_PORT).unwrap();
+    println!("Listening on {SERVING_IP_PORT}");
 
     loop {
         let mut request = server.recv()?;

@@ -17,7 +17,7 @@ fn main() {
         match args[1].as_str() {
             "help" => help(),
             "scan" => match scanner::scan::run(args){
-                Ok(_) => (),
+                Ok(_) => println!("SUCESS: Succesfully scaned and saved data"),
                 Err(e) => eprintln!("ERROR: scan {e}"),
             },
             "search" => {
