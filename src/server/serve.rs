@@ -1,6 +1,7 @@
 use std::io;
 use tiny_http::{Method, Response, Server, StatusCode};
 
+use crate::config::SERVING_IP_PORT;
 use crate::search;
 use crate::serialization;
 use crate::server::wrappers;
@@ -14,7 +15,7 @@ struct SearchResult {
 }
 
 pub fn run() -> Result<(), io::Error> {
-    let server = Server::http("0.0.0.0:8000").unwrap();
+    let server = Server::http(SERVING_IP_PORT).unwrap();
 
     loop {
         let mut request = server.recv()?;
