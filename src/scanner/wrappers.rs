@@ -1,6 +1,9 @@
 use crate::config::TFIDF_TO_WORD_PATH;
 use crate::{serialization::DocTfIdf, tf_idf::compute, token};
 use pdf_extract::extract_text_by_pages;
+use html2text::from_read;
+use std::io::prelude::*;
+use std::fs::File;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -27,6 +30,24 @@ pub fn extract_pdf_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
         });
     }
     Ok(file_objects)
+}
+
+pub fn extract_html_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
+    let mut f = File::open(path)?;
+    let mut buffer = String::new();
+    f.read_to_string(&mut buffer)?;
+    let words_string = from_read(buffer.as_bytes(), 20).unwrap(); // result fix
+    let words_vec = token::count_individual_token(token::tokenize(words_string));
+    let loc = Loc {
+        path: path.to_path_buf(),
+        page: 1,
+    };
+    let doc = Doc {
+        loc: loc,
+        extension: "html".to_string(),
+        words: words_vec,
+    };
+    Ok(vec![doc])
 }
 
 pub fn recursive_read_directory(path: &Path) -> Result<Vec<PathBuf>, ScanError> {

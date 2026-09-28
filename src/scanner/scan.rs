@@ -8,6 +8,7 @@ use crate::scanner::wrappers;
 
 enum ScanJob {
     Pdf(PathBuf),
+    Html(PathBuf),
 }
 
 pub fn run(args: Vec<String>) -> Result<(), ScanError> {
@@ -24,6 +25,7 @@ pub fn run(args: Vec<String>) -> Result<(), ScanError> {
         spawn_worker_pool(MAX_WORKERS, |job: ScanJob| -> Result<Vec<Doc>, ScanError> {
             match job {
                 ScanJob::Pdf(path) => wrappers::extract_pdf_data(&path),
+                ScanJob::Html(path) => wrappers::extract_html_data(&path),
             }
         });
 
@@ -36,6 +38,12 @@ pub fn run(args: Vec<String>) -> Result<(), ScanError> {
         match ext {
             "pdf" => {
                 if job_tx.send(ScanJob::Pdf(path)).is_err() {
+                    eprintln!("FATAL: worker pool is dead, aborting scan");
+                    break; // no point sending more, nobody will receive them
+                }
+            }
+            "html" => {
+                if job_tx.send(ScanJob::Html(path)).is_err() {
                     eprintln!("FATAL: worker pool is dead, aborting scan");
                     break; // no point sending more, nobody will receive them
                 }
