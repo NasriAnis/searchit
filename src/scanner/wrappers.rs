@@ -1,9 +1,9 @@
 use crate::config::TFIDF_TO_WORD_PATH;
 use crate::{serialization::DocTfIdf, tf_idf::compute, token};
-use pdf_extract::extract_text_by_pages;
 use html2text::from_read;
-use std::io::prelude::*;
+use pdf_extract::extract_text_by_pages;
 use std::fs::File;
+use std::io::prelude::*;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -129,7 +129,8 @@ pub fn compute_tf_idf_wrapper(file_objects: Vec<Doc>) -> Result<(), ScanError> {
             page: doc.loc.page,
             extension: doc.extension,
             terms: tf_to_word,
-        }.serialize(file_name)?;
+        }
+        .serialize(file_name)?;
     }
     Ok(())
 }

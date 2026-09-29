@@ -14,7 +14,7 @@ enum ScanJob {
 pub fn run(args: Vec<String>) -> Result<(), ScanError> {
     if args.len() < 3 {
         wrappers::help();
-        return Err(ScanError::CommandError("Not enought arguments".to_string()))
+        return Err(ScanError::CommandError("Not enought arguments".to_string()));
     }
     let path = Path::new(&args[2]);
 

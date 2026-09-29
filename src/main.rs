@@ -1,10 +1,10 @@
 use std::env;
 
-pub mod scanner;
-pub mod server;
-pub mod search;
 pub mod config;
+pub mod scanner;
+pub mod search;
 pub mod serialization;
+pub mod server;
 pub mod tf_idf;
 pub mod token;
 pub mod workers;
@@ -16,7 +16,7 @@ fn main() {
     } else {
         match args[1].as_str() {
             "help" => help(),
-            "scan" => match scanner::scan::run(args){
+            "scan" => match scanner::scan::run(args) {
                 Ok(_) => println!("SUCESS: Succesfully scaned and saved data"),
                 Err(e) => eprintln!("ERROR: scan {e}"),
             },

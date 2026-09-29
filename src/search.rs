@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::io;
 
+use crate::config::TFIDF_TO_WORD_PATH;
 use crate::config::TOP_RESULTS;
 use crate::serialization::DocTfIdf;
 use crate::token;
-use crate::config::TFIDF_TO_WORD_PATH;
 
 pub fn run(args: Vec<String>) -> Result<Vec<(DocTfIdf, f64)>, io::Error> {
     if args.len() < 3 {

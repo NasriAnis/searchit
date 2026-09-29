@@ -16,10 +16,7 @@ pub struct DocTfIdf {
 }
 
 impl DocTfIdf {
-    pub fn serialize(
-        self,
-        file_name: String,
-    ) -> Result<(), io::Error> {
+    pub fn serialize(self, file_name: String) -> Result<(), io::Error> {
         let file = File::create(file_name)?;
         let mut writer = BufWriter::new(file);
         // impl: check if files already exit and handle that

@@ -32,21 +32,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn tokenize_text(){
+    fn tokenize_text() {
         let text = "hello, how are you doing? hello".to_string();
         let tokens = tokenize(text);
         assert_eq!(tokens, vec!["hello", "how", "are", "you", "doing", "hello"]);
     }
 
     #[test]
-    fn count_token(){
+    fn count_token() {
         let tokens = vec![
-            "hello".to_string(), 
-            "how".to_string(), 
-            "are".to_string(), 
-            "you".to_string(), 
-            "doing".to_string(), 
-            "hello".to_string()
+            "hello".to_string(),
+            "how".to_string(),
+            "are".to_string(),
+            "you".to_string(),
+            "doing".to_string(),
+            "hello".to_string(),
         ];
         let mut expect: HashMap<String, usize> = HashMap::new();
         expect.insert("hello".to_string(), 2);

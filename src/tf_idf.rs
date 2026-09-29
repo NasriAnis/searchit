@@ -10,6 +10,9 @@ mod tests {
 
     #[test]
     fn compute_tfidf() {
-        assert_eq!(compute(10 as f64, 100 as f64, 1000 as f64, 2 as f64), 0.2698970004336018);
+        assert_eq!(
+            compute(10 as f64, 100 as f64, 1000 as f64, 2 as f64),
+            0.2698970004336018
+        );
     }
 }

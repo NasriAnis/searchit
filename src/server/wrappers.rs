@@ -4,7 +4,6 @@ use std::path::Path;
 
 use tiny_http::{Request, Response, StatusCode};
 
-
 pub fn serve_file(request: Request, path: &str, content_type: &str) {
     let _ = request.respond(
         Response::from_file(File::open(Path::new(path)).expect("File to server not found"))
@@ -42,11 +41,9 @@ pub fn serve_file_inline(request: Request, url: &str) -> Result<(), io::Error> {
         Some("html") => "text/html; charset=utf-8",
         _ => "application/octet-stream",
     };
-    
+
     let response = Response::from_file(file)
-        .with_header(tiny_http::Header::from_bytes(
-            "Content-Type", content_type
-        ).unwrap())
+        .with_header(tiny_http::Header::from_bytes("Content-Type", content_type).unwrap())
         .with_header(
             tiny_http::Header::from_bytes(
                 "Content-Disposition",
