@@ -8,7 +8,7 @@ pub fn tokenize(text: String) -> Vec<String> {
         if cleaned.is_empty() {
             continue;
         }
-        tokens.push(cleaned.to_ascii_lowercase());
+        tokens.push(cleaned.to_lowercase());
     }
     tokens
 }
