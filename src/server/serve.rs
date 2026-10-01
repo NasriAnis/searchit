@@ -19,7 +19,13 @@ pub fn run() -> Result<(), io::Error> {
     println!("Listening on {SERVING_IP_PORT}");
 
     loop {
-        let mut request = server.recv()?;
+        let mut request = match server.recv(){
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("ERROR: {e}");
+                continue;
+            }
+        };
 
         let method = request.method().clone();
         let url = request.url().to_string();
@@ -42,7 +48,13 @@ pub fn run() -> Result<(), io::Error> {
                 let _ = request.as_reader().read_to_string(&mut query);
 
                 let documents: Vec<(serialization::DocTfIdf, f64)> =
-                    search::run(vec!["".to_string(), "".to_string(), query.clone()])?;
+                    match search::run(vec!["".to_string(), "".to_string(), query.clone()]){
+                        Ok(d) => d,
+                        Err(e) => {
+                            eprintln!("ERROR: {e}");
+                            continue;
+                        }
+                    };
 
                 let results: Vec<SearchResult> = documents
                     .into_iter()
@@ -66,7 +78,10 @@ pub fn run() -> Result<(), io::Error> {
                 let _ = request.respond(response);
             }
             (Method::Get, url) if url.starts_with("/files/") => {
-                wrappers::serve_file_inline(request, url)?;
+                match wrappers::serve_file_inline(request, url){
+                    Ok(()) => {},
+                    Err(e) => eprintln!("ERROR: {e}"),
+                };
             }
             (Method::Get, "/index.js") => {
                 wrappers::serve_file(
