@@ -14,6 +14,23 @@ use crate::scanner::error_handling::ScanError;
 use crate::scanner::structures::Doc;
 use crate::scanner::structures::Loc;
 
+pub fn extract_text_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
+    let mut f = File::open(path)?;
+    let mut buffer = String::new();
+    f.read_to_string(&mut buffer)?;
+    let words_vec = token::count_individual_token(token::tokenize(buffer));
+    let loc = Loc {
+        path: path.to_path_buf(),
+        page: 1,
+    };
+    let doc = Doc {
+        loc: loc,
+        extension: "txt".to_string(),
+        words: words_vec,
+    };
+    Ok(vec![doc])
+}
+
 pub fn extract_pdf_data(path: &Path) -> Result<Vec<Doc>, ScanError> {
     let mut file_objects: Vec<Doc> = vec![];
     let words_vector = extract_text_by_pages(path)?;

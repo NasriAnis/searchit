@@ -39,6 +39,7 @@ pub fn serve_file_inline(request: Request, url: &str) -> Result<(), io::Error> {
     {
         Some("pdf") => "application/pdf",
         Some("html") => "text/html; charset=utf-8",
+        Some("txt") => "text/plain; charset=utf-8",
         _ => "application/octet-stream",
     };
 

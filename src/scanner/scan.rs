@@ -9,6 +9,7 @@ use crate::scanner::wrappers;
 enum ScanJob {
     Pdf(PathBuf),
     Html(PathBuf),
+    Txt(PathBuf),
 }
 
 pub fn run(args: Vec<String>) -> Result<(), ScanError> {
@@ -26,6 +27,7 @@ pub fn run(args: Vec<String>) -> Result<(), ScanError> {
             match job {
                 ScanJob::Pdf(path) => wrappers::extract_pdf_data(&path),
                 ScanJob::Html(path) => wrappers::extract_html_data(&path),
+                ScanJob::Txt(path) => wrappers::extract_text_data(&path),
             }
         });
 
@@ -44,6 +46,12 @@ pub fn run(args: Vec<String>) -> Result<(), ScanError> {
             }
             "html" => {
                 if job_tx.send(ScanJob::Html(path)).is_err() {
+                    eprintln!("FATAL: worker pool is dead, aborting scan");
+                    break; // no point sending more, nobody will receive them
+                }
+            }
+            "txt" => {
+                if job_tx.send(ScanJob::Txt(path)).is_err() {
                     eprintln!("FATAL: worker pool is dead, aborting scan");
                     break; // no point sending more, nobody will receive them
                 }
